@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Analysis Dashboard - Project Minh</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container { max-width: 1400px; margin: 0 auto; }
+        
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        h1 { color: #333; font-size: 2.5em; margin-bottom: 10px; }
+        .subtitle { color: #666; font-size: 1.1em; }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+        
+        .stat-value {
+            color: #667eea;
+            font-size: 2em;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .chart-box {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .chart-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            text-align: left;
+        }
+        
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        tr:hover { background: #f8f9ff; }
+        
+        footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            padding: 20px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: white;
+            font-size: 1.5em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📈 Stock Price Analysis Dashboard</h1>
+            <p class="subtitle">Project Minh - Big Data với Hadoop & Spark</p>
+        </header>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-label">Số lượng phân tích</div>
+                <div class="stat-value">3</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Công ty phân tích</div>
+                <div class="stat-value" id="totalCompanies">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Công nghệ</div>
+                <div class="stat-value" style="font-size: 1.2em;">Spark</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Storage</div>
+                <div class="stat-value" style="font-size: 1.2em;">HDFS</div>
+            </div>
+        </div>
+        
+        <div class="chart-box">
+            <h2 class="chart-title">Giá trung bình theo năm</h2>
+            <canvas id="yearChart"></canvas>
+        </div>
+        
+        <div class="chart-box">
+            <h2 class="chart-title">Top 10 cổ phiếu biến động mạnh nhất</h2>
+            <canvas id="volatileChart"></canvas>
+        </div>
+        
+        <div class="chart-box">
+            <h2 class="chart-title">So sánh các công ty lớn</h2>
+            <canvas id="majorChart"></canvas>
+        </div>
+        
+        <div class="chart-box">
+            <h2 class="chart-title">Chi tiết Top Volatile Stocks</h2>
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>Thứ hạng</th>
+                        <th>Công ty</th>
+                        <th>Độ biến động</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="3" style="text-align: center;">Đang tải dữ liệu...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <footer>
+            <p>🚀 Powered by Apache Hadoop 3.2.1 + Apache Spark 3.0.1</p>
+            <p>Project Minh - Stock Price Big Data Analysis</p>
+        </footer>
+    </div>
+
+    <script>
+        async function loadData() {
+            try {
+                const response = await fetch('results.json');
+                const data = await response.json();
+                
+                // Update stats
+                document.getElementById('totalCompanies').textContent = 
+                    data.volatile.length + '+';
+                
+                // Chart 1: Avg by year
+                new Chart(document.getElementById('yearChart'), {
+                    type: 'line',
+                    data: {
+                        labels: data.avg_year.map(d => d.year),
+                        datasets: [{
+                            label: 'Giá trung bình ($)',
+                            data: data.avg_year.map(d => d.avg),
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: true } }
+                    }
+                });
+                
+                // Chart 2: Volatile
+                new Chart(document.getElementById('volatileChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: data.volatile.map(d => d.company),
+                        datasets: [{
+                            label: 'Độ biến động',
+                            data: data.volatile.map(d => d.vol),
+                            backgroundColor: 'rgba(118, 75, 162, 0.8)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        indexAxis: 'y'
+                    }
+                });
+                
+                // Chart 3: Major companies
+                new Chart(document.getElementById('majorChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: data.major.map(d => d.company),
+                        datasets: [{
+                            label: 'Giá trung bình ($)',
+                            data: data.major.map(d => d.avg),
+                            backgroundColor: [
+                                'rgba(102, 126, 234, 0.8)',
+                                'rgba(118, 75, 162, 0.8)',
+                                'rgba(234, 102, 126, 0.8)',
+                                'rgba(126, 234, 102, 0.8)'
+                            ]
+                        }]
+                    },
+                    options: { responsive: true }
+                });
+                
+                // Table
+                document.getElementById('tableBody').innerHTML = 
+                    data.volatile.map((d, i) => `
+                        <tr>
+                            <td><strong>${i + 1}</strong></td>
+                            <td><strong>${d.company}</strong></td>
+                            <td>${d.vol.toFixed(2)}</td>
+                        </tr>
+                    `).join('');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Lỗi: Không tìm thấy file results.json!');
+            }
+        }
+        
+        window.addEventListener('load', loadData);
+    </script>
+</body>
+</html>
